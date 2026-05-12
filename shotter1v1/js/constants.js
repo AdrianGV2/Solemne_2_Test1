@@ -15,11 +15,11 @@ const GAME_CONFIG = {
     
     // Jugador - Propiedades
     PLAYER: {
-        WIDTH: 32,
-        HEIGHT: 32,
+        WIDTH: 48,
+        HEIGHT: 48,
         SPEED: 150,           // píxeles por segundo
         JUMP_POWER: 350,      // Velocidad de salto
-        CROUCH_HEIGHT: 16,    // Alto cuando se agacha
+        CROUCH_HEIGHT: 24,    // Alto cuando se agacha
         CROUCH_SCALE: 0.5,    // Escala visual al agacharse
         MAX_LIVES: 3,
     },

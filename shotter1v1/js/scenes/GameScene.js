@@ -7,10 +7,47 @@ class GameScene extends Phaser.Scene {
         super({ key: 'GameScene' });
     }
     
+    preload() {
+        // Cargar imágenes de los personajes
+        console.log('Precargando imágenes de personajes...');
+        this.load.image('player_red', './Assets/Images/sprites/Personaje_Rojo_Shooter.png');
+        this.load.image('player_blue', './Assets/Images/sprites/Personaje_Azul_Shooter.png');
+        
+        // Cargar imagen de escenario
+        console.log('Precargando escenario...');
+        this.load.image('scenario', './Assets/Images/maps/Escenario_shoooter.png');
+        
+        // Cargar imágenes de plataformas
+        console.log('Precargando plataformas...');
+        this.load.image('platform1', './Assets/Images/maps/plataforma1.png');
+        this.load.image('platform2', './Assets/Images/maps/plataforma2.png');
+        this.load.image('platform3', './Assets/Images/maps/plataforma3.png');
+        
+        // Cargar imágenes de armas
+        console.log('Precargando armas...');
+        this.load.image('weapon_pistola', './Assets/Images/weapons/pistola.png');
+        this.load.image('weapon_escopeta', './Assets/Images/weapons/escopeta.png');
+        this.load.image('weapon_rifle', './Assets/Images/weapons/rifle.png');
+        this.load.image('weapon_smg', './Assets/Images/weapons/smg.png');
+        
+        this.load.on('complete', () => {
+            console.log('✓ Todas las imágenes cargadas correctamente');
+        });
+        
+        this.load.on('loaderror', (file) => {
+            console.error('✗ Error al cargar:', file.src);
+        });
+    }
+    
     create() {
         console.log('=== GameScene Iniciada ===');
         console.log('Config:', GAME_CONFIG);
         console.log('Colors:', COLORS);
+        
+        // Agregar imagen de escenario de fondo
+        this.add.image(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2, 'scenario')
+            .setOrigin(0.5, 0.5)
+            .setDisplaySize(GAME_CONFIG.WIDTH, GAME_CONFIG.HEIGHT);
         
         // Configurar física
         this.physics.world.setFPS(60);
@@ -53,6 +90,16 @@ class GameScene extends Phaser.Scene {
         // Crear armas en el mapa
         this.weaponsOnGround = [];
         this.spawnWeapons();
+        
+        // Colisiones: Armas con plataformas y obstáculos
+        for (let weapon of this.weaponsOnGround) {
+            for (let platform of this.gameMap.getPlatforms()) {
+                this.physics.add.collider(weapon.sprite, platform);
+            }
+            for (let obstacle of this.gameMap.getObstacles()) {
+                this.physics.add.collider(weapon.sprite, obstacle);
+            }
+        }
         
         // Grupo para proyectiles
         this.projectiles = this.add.group();
@@ -125,14 +172,20 @@ class GameScene extends Phaser.Scene {
     }
     
     handleKeyDown(event) {
-        // Player 1 - Soltar arma
-        if (event.keyCode === CONTROLS.PLAYER1.DROP_WEAPON && this.player1.equippedWeapon) {
-            this.player1.dropWeapon();
+        // Player 1 - Soltar arma (Q)
+        if (event.keyCode === CONTROLS.PLAYER1.DROP_WEAPON) {
+            if (this.player1.equippedWeapon) {
+                console.log(`Player 1 soltando arma: ${this.player1.equippedWeapon.name}`);
+                this.player1.dropWeapon();
+            }
         }
         
-        // Player 2 - Soltar arma
-        if (event.keyCode === CONTROLS.PLAYER2.DROP_WEAPON && this.player2.equippedWeapon) {
-            this.player2.dropWeapon();
+        // Player 2 - Soltar arma (BACKSPACE)
+        if (event.keyCode === CONTROLS.PLAYER2.DROP_WEAPON) {
+            if (this.player2.equippedWeapon) {
+                console.log(`Player 2 soltando arma: ${this.player2.equippedWeapon.name}`);
+                this.player2.dropWeapon();
+            }
         }
     }
     
@@ -165,11 +218,12 @@ class GameScene extends Phaser.Scene {
                     weapon.sprite.y
                 );
                 
-                if (distP1 < 30 && !weapon.isEquipped && this.player1.input.pickup.isDown) {
+                if (distP1 < 30 && !weapon.isEquipped && !weapon.justDropped && this.player1.input.pickup.isDown) {
                     weapon.isEquipped = true;
                     weapon.owner = this.player1;
                     this.player1.equip(weapon);
                     weapon.sprite.setPosition(this.player1.x, this.player1.y - 20);
+                    console.log(`✓ Player 1 recogió ${weapon.name}`);
                 }
                 
                 const distP2 = Phaser.Math.Distance.Between(
@@ -179,11 +233,12 @@ class GameScene extends Phaser.Scene {
                     weapon.sprite.y
                 );
                 
-                if (distP2 < 30 && !weapon.isEquipped && this.player2.input.pickup.isDown) {
+                if (distP2 < 30 && !weapon.isEquipped && !weapon.justDropped && this.player2.input.pickup.isDown) {
                     weapon.isEquipped = true;
                     weapon.owner = this.player2;
                     this.player2.equip(weapon);
                     weapon.sprite.setPosition(this.player2.x, this.player2.y - 20);
+                    console.log(`✓ Player 2 recogió ${weapon.name}`);
                 }
             }
         }
@@ -218,34 +273,36 @@ class GameScene extends Phaser.Scene {
         const projectiles = this.projectiles.getChildren();
         
         projectiles.forEach((projectile) => {
-            // Colisión con Player 1
+            // Colisión con Player 1 - detectar impacto
             if (
-                !projectile.owner?.isCrouching &&
+                projectile.ownerId !== 1 &&
                 Phaser.Math.Distance.Between(
                     projectile.x,
                     projectile.y,
                     this.player1.x,
                     this.player1.y
-                ) < 20 &&
-                projectile.ownerId !== 1
+                ) < 30
             ) {
+                console.log(`¡Proyectil impactó a Player 1!`);
                 this.player1.loseLive();
                 projectile.destroy();
+                return;
             }
             
-            // Colisión con Player 2
+            // Colisión con Player 2 - detectar impacto
             if (
-                !projectile.owner?.isCrouching &&
+                projectile.ownerId !== 2 &&
                 Phaser.Math.Distance.Between(
                     projectile.x,
                     projectile.y,
                     this.player2.x,
                     this.player2.y
-                ) < 20 &&
-                projectile.ownerId !== 2
+                ) < 30
             ) {
+                console.log(`¡Proyectil impactó a Player 2!`);
                 this.player2.loseLive();
                 projectile.destroy();
+                return;
             }
             
             // Destruir si sale del mundo

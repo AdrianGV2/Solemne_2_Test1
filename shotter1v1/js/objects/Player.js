@@ -18,9 +18,15 @@ class Player {
         this.active = true;
         this.visible = true;
         
-        // Crear sprite físico usando un rectángulo
-        this.sprite = scene.add.rectangle(x, y, GAME_CONFIG.PLAYER.WIDTH, GAME_CONFIG.PLAYER.HEIGHT, this.color);
+        // Crear sprite físico usando imagen
+        const spriteKey = playerId === 1 ? 'player_red' : 'player_blue';
+        this.sprite = scene.add.image(x, y, spriteKey);
+        this.sprite.setOrigin(0.5, 0.5);  // Centrar el sprite
+        this.sprite.setDisplaySize(GAME_CONFIG.PLAYER.WIDTH, GAME_CONFIG.PLAYER.HEIGHT);
+        this.sprite.setScale(2.0);  // Escalar para mayor visibilidad
         scene.physics.add.existing(this.sprite);
+        
+        console.log(`Sprite Player ${playerId} creado con imagen: ${spriteKey}`);
         
         // Configurar física
         this.body = this.sprite.body;
@@ -28,6 +34,7 @@ class Player {
         this.body.setCollideWorldBounds(true);
         this.body.setDrag(0, 0);
         this.body.setGravityY(0);
+        this.body.setSize(GAME_CONFIG.PLAYER.WIDTH, GAME_CONFIG.PLAYER.HEIGHT);  // Asegurar tamaño del body
         
         // Controles
         this.controls = playerId === 1 ? CONTROLS.PLAYER1 : CONTROLS.PLAYER2;
@@ -103,18 +110,25 @@ class Player {
     }
     
     equip(weapon) {
-        if (this.equippedWeapon) {
+        // Si ya tiene un arma, soltarla primero
+        if (this.equippedWeapon && this.equippedWeapon !== weapon) {
+            console.log(`⚠ Player ${this.playerId} reemplazando ${this.equippedWeapon.name} por ${weapon.name}`);
             this.dropWeapon();
         }
+        
+        // Equipar nueva arma
         this.equippedWeapon = weapon;
-        console.log(`Player ${this.playerId} equipó: ${weapon.name}`);
+        weapon.isEquipped = true;
+        weapon.owner = this;
+        console.log(`✓ Player ${this.playerId} equipó: ${weapon.name}`);
     }
     
     dropWeapon() {
         if (this.equippedWeapon) {
+            const weaponName = this.equippedWeapon.name;
             this.equippedWeapon.drop(this.x, this.y);
             this.equippedWeapon = null;
-            console.log(`Player ${this.playerId} soltó el arma`);
+            console.log(`✓ Player ${this.playerId} soltó ${weaponName}`);
         }
     }
     

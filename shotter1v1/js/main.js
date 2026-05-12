@@ -15,7 +15,7 @@ const config = {
             enableBody: true,
         },
     },
-    scene: [GameScene],
+    scene: [MenuScene, GameScene],
     render: {
         pixelArt: true,
         antialias: false,
@@ -26,4 +26,5 @@ const config = {
 window.game = new Phaser.Game(config);
 
 console.log('🎮 Shotter 1v1 - Military Edition');
-console.log('Juego iniciado correctamente');
+console.log('✓ Menú cargado');
+console.log('✓ Juego inicializado correctamente');

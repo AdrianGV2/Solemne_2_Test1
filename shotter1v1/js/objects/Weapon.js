@@ -15,11 +15,23 @@ class Weapon {
         this.fireRate = weaponType.fireRate;
         this.projectileSpeed = GAME_CONFIG.WEAPONS.PROJECTILE.SPEED;
         
-        // Sprite físico del arma
-        this.sprite = scene.add.rectangle(x, y, 20, 10, COLORS.WEAPON);
+        // Mapeo de nombres de armas a claves de imágenes
+        const weaponImageMap = {
+            'Pistol': 'weapon_pistola',
+            'Rifle': 'weapon_rifle',
+            'Shotgun': 'weapon_escopeta',
+            'SMG': 'weapon_smg'
+        };
+        
+        // Sprite físico del arma (imagen en lugar de rectángulo)
+        const imageKey = weaponImageMap[weaponType.name] || 'weapon_pistola';
+        this.sprite = scene.add.image(x, y, imageKey);
+        this.sprite.setDisplaySize(32, 24);  // Tamaño visual de las armas
         scene.physics.add.existing(this.sprite);
         this.sprite.body.setCollideWorldBounds(true);
         this.sprite.body.setBounce(0.3);
+        this.sprite.body.setAllowGravity(false);  // Sin gravedad - ubicación fija en el aire
+        this.sprite.body.setVelocity(0, 0); // Asegurar que no tenga velocidad inicial
         
         // Última vez que se disparó (para controlar fireRate)
         this.lastFireTime = 0;
@@ -33,9 +45,18 @@ class Weapon {
     
     drop(x, y) {
         this.sprite.setPosition(x, y);
-        this.sprite.setVelocity(Phaser.Math.Between(-100, 100), 0);
+        this.sprite.body.setVelocity(0, 0);
+        this.sprite.body.setAllowGravity(false);  // Mantener sin gravedad
         this.isEquipped = false;
         this.owner = null;
+        
+        // Flag temporal para evitar que se recoja inmediatamente después de soltar
+        this.justDropped = true;
+        this.scene.time.delayedCall(100, () => {
+            this.justDropped = false;
+        });
+        
+        console.log(`Arma ${this.name} soltada en (${x}, ${y})`);
     }
     
     fire(fromX, fromY, targetX, targetY) {
@@ -48,7 +69,7 @@ class Weapon {
         
         this.lastFireTime = now;
         
-        // Calcular dirección
+        // Calcular dirección hacia el objetivo
         const dx = targetX - fromX;
         const dy = targetY - fromY;
         const distance = Phaser.Math.Distance.Between(fromX, fromY, targetX, targetY);
@@ -67,6 +88,7 @@ class Weapon {
         );
         
         this.scene.physics.add.existing(projectile);
+        projectile.body.setAllowGravity(false);  // Sin gravedad - viaja recto
         projectile.body.setVelocity(
             normalizedDx * this.projectileSpeed,
             normalizedDy * this.projectileSpeed
@@ -77,6 +99,11 @@ class Weapon {
         // Guardar datos del proyectil
         projectile.damage = this.damage;
         projectile.ownerId = this.owner ? this.owner.playerId : null;
+        
+        // ✓ AGREGAR PROYECTIL AL GRUPO PARA QUE PUEDA SER ACTUALIZADO
+        if (this.scene.projectiles) {
+            this.scene.projectiles.add(projectile);
+        }
         
         // Destruir proyectil cuando sale del mundo
         this.scene.physics.world.on('worldbounds', (body) => {
